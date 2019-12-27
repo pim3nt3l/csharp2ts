@@ -1,0 +1,9 @@
+bin/
+debug/
+obj/
+release/
+*.suo
+*.user
+.vs/
+.vscode/
+packages/
