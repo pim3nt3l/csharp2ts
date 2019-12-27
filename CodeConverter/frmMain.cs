@@ -26,7 +26,7 @@ namespace CodeConverter
             ofd.SelectedPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             if (ofd.ShowDialog() == DialogResult.OK)
             {
-                this.txtPath.Text = ofd.SelectedPath;
+                this.txtPath.Text = this.txtOutput.Text = ofd.SelectedPath;
                 this.GetFilesFromDirectory();
             }
         }
@@ -53,12 +53,23 @@ namespace CodeConverter
 
         private void ConvertFiles(IEnumerable<string> items)
         {
-            foreach (var item in items)
+            foreach (var path in items)
             {
-                var text = File.ReadAllText(item);
-                var extracted = this.ConvertToTypescript(text, new ConvertSettings() { IsConvertToInterface = true, IsConvertMemberToCamelCase = true , IsConvertListToArray = true });
-                File.WriteAllText(item.Replace(".cs", ".ts"), extracted);
-                this.txtLog.AppendText($"Item: '{item}', exported\n");
+                var fileInfo = new FileInfo(path);
+                var text = File.ReadAllText(path);
+                var translated = this.ConvertToTypescript(text, new ConvertSettings()
+                {
+                    IsConvertToInterface = true,
+                    IsConvertMemberToCamelCase = true,
+                    IsConvertListToArray = true,
+                });
+                var output = Path.Combine(this.txtOutput.Text, $"{fileInfo.Name.Replace(".cs", ".ts")}");
+                File.WriteAllText(output, translated);
+                this.lbLog.Items.Add($"Item: '{path}', exported to '{output}'\n");
+            }
+            if(MessageBox.Show("Do you want to open output directory?", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                System.Diagnostics.Process.Start(this.txtOutput.Text);
             }
         }
 
@@ -110,6 +121,25 @@ namespace CodeConverter
         {
             return !root.DescendantNodes(null, false).Any();
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            var ofd = new FolderBrowserDialog();
+            ofd.SelectedPath = this.txtOutput.Text;
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                this.txtOutput.Text = ofd.SelectedPath;
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            this.txtOutput.Clear();
+            this.txtPath.Clear();
+            this.itemsListBox.Items.Clear();
+            this.lbLog.Items.Clear();
+            this.txtPath.Focus();
+        }
     }
 
 
@@ -117,7 +147,14 @@ namespace CodeConverter
     {
         public ConvertSettings()
         {
-            this.ReplacedTypeNameArray = new TypeNameReplacementData[0];
+            this.ReplacedTypeNameArray = new TypeNameReplacementData[]{
+                new TypeNameReplacementData(){ OldTypeName = "System.DateTime", NewTypeName = "Date"},
+                new TypeNameReplacementData(){ OldTypeName = "System.Collections.ICollection", NewTypeName = "Array"},
+                new TypeNameReplacementData(){ OldTypeName = "System.Collections.IEnumerable", NewTypeName = "Array"},
+                new TypeNameReplacementData(){ OldTypeName = "System.Collections.IList", NewTypeName = "Array"},
+                new TypeNameReplacementData(){ OldTypeName = "System.Collections.HashSet", NewTypeName = "Array"},
+                new TypeNameReplacementData(){ OldTypeName = "System.Collections.Generic.List", NewTypeName = "Array"},
+            };
         }
         public bool IsConvertMemberToCamelCase { get; set; }
         public bool IsConvertToInterface { get; set; }
